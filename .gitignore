@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Development and testing files
+server/*-test*.ts
+server/*-final*.ts
+server/*-completion*.ts
+server/*-expansion*.ts
+server/*-sprint*.ts
+server/*-push*.ts
+server/*-batch*.ts
+server/*-collection*.ts
+server/*-remaining*.ts
+server/*-build*.ts
+server/*-march*.ts
+server/*-absolute*.ts
+server/*-massive*.ts
+server/*-rapid*.ts
+server/*-ultra*.ts
+server/*-complete*.ts
+server/*-cleanup*.ts
+server/*-balance*.ts
+server/check-duplicates.ts
+server/add-*.ts
+server/create-*.ts
+server/seed.ts
+
+# Attached assets
+attached_assets/
+
+# Database
+*.db
+*.sqlite
