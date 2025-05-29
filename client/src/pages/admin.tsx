@@ -47,6 +47,8 @@ export default function AdminPage() {
 
   const { data: stats } = useQuery({
     queryKey: ["/api/admin/stats"],
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    staleTime: 0, // Always fetch fresh admin statistics
   });
 
   const createPuzzleMutation = useMutation({
@@ -97,6 +99,21 @@ export default function AdminPage() {
     },
   });
 
+  const makeAdminMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await apiRequest("POST", "/api/admin/make-admin", { userId });
+      if (!response.ok) throw new Error("Failed to make user admin");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success!", description: "User promoted to admin successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to promote user to admin", variant: "destructive" });
+    },
+  });
+
   const handleSendMessage = (user: any) => {
     setSelectedUser(user);
     setShowMessageDialog(true);
@@ -105,6 +122,15 @@ export default function AdminPage() {
   const handleSubmitMessage = () => {
     if (!messageText.trim() || !selectedUser) return;
     sendMessageMutation.mutate({ userId: selectedUser.id, message: messageText });
+  };
+
+  const handleViewProgress = (user: any) => {
+    // Navigate to user's progress page or show detailed progress modal
+    setLocation(`/progress?userId=${user.id}`);
+  };
+
+  const handleMakeAdmin = (user: any) => {
+    makeAdminMutation.mutate(user.id);
   };
 
   return (
@@ -202,28 +228,35 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Recent Activity - Dynamic Data */}
+            {/* Recent Activity - Real User Data */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
               <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
               <div className="space-y-3">
-                {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-                  stats.recentActivity.map((activity: any, index: number) => (
+                {stats?.todaySolutionsWithUsers && stats.todaySolutionsWithUsers.length > 0 ? (
+                  stats.todaySolutionsWithUsers.map((solution: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium">{activity.user?.charAt(0) || 'U'}</span>
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">{solution.username?.charAt(0) || 'U'}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{activity.user || 'Unknown User'}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">{activity.action || 'No action recorded'}</p>
+                          <p className="text-sm font-medium">{solution.username}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">Solved: {solution.title}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs">{activity.time || 'Unknown'}</Badge>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={solution.difficulty === 'easy' ? 'default' : solution.difficulty === 'medium' ? 'secondary' : 'destructive'} className="text-xs">
+                          {solution.difficulty}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {new Date(solution.completedAt).toLocaleTimeString()}
+                        </Badge>
+                      </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <p className="text-sm">No recent activity to display</p>
+                    <p className="text-sm">No recent activity</p>
                     <p className="text-xs mt-1">User actions will appear here</p>
                   </div>
                 )}
@@ -332,21 +365,21 @@ export default function AdminPage() {
                         {user.isAdmin ? (
                           <Badge variant="destructive">Admin</Badge>
                         ) : (
-                          <Badge variant="secondary">User</Badge>
+                          <Badge className="bg-green-100 text-green-800 border-green-200">User</Badge>
                         )}
                       </td>
                       
                       {/* Actions */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2 min-w-[240px]">
-                          <Button variant="outline" size="sm" className="text-xs">
+                          <Button variant="outline" size="sm" className="text-xs" onClick={() => handleViewProgress(user)}>
                             View Progress
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => handleSendMessage(user)} className="text-xs">
                             Send Message
                           </Button>
                           {!user.isAdmin && (
-                            <Button variant="outline" size="sm" className="text-orange-600 border-orange-600 text-xs">
+                            <Button variant="outline" size="sm" className="text-orange-600 border-orange-600 text-xs" onClick={() => handleMakeAdmin(user)}>
                               Make Admin
                             </Button>
                           )}
