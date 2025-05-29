@@ -4,7 +4,7 @@ import { storage } from "./database-storage";
 import { insertUserSchema, insertUserProgressSchema, insertSessionSchema } from "@shared/schema";
 import { z } from "zod";
 import { setupAuth, authenticateToken, requireAdmin, generateToken, verifyPassword, hashPassword } from "./auth";
-import { sendPasswordResetEmail } from "./simple-email";
+import { sendPasswordResetEmail, sendAdminMessage } from "./simple-email";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -96,6 +96,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/profile/current", authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      
+      // Update lastActive timestamp to track active sessions
+      await storage.updateUser(userId, { lastActive: new Date() });
+      
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -380,6 +384,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(userAchievements);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user achievements" });
+    }
+  });
+
+  // Admin routes
+  app.get("/api/admin/stats", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const totalUsers = await storage.getTotalUsersCount();
+      const totalPuzzles = await storage.getTotalPuzzlesCount();
+      const todaySolutions = await storage.getTodaySolutionsCount();
+      const todaySolutionsWithUsers = await storage.getTodaySolutionsWithUsers();
+      const activeSessions = await storage.getActiveSessionsCount();
+
+      res.json({
+        totalUsers,
+        totalPuzzles,
+        todaySolutions,
+        todaySolutionsWithUsers,
+        activeSessions
+      });
+    } catch (error) {
+      console.error('Admin stats error:', error);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
+  app.get("/api/admin/users", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Admin users error:', error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.get("/api/admin/puzzles", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const puzzles = await storage.getPuzzles();
+      res.json(puzzles);
+    } catch (error) {
+      console.error('Admin puzzles error:', error);
+      res.status(500).json({ message: "Failed to fetch puzzles" });
+    }
+  });
+
+  app.post("/api/admin/send-message", authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const { userId, message } = req.body;
+      const adminName = req.user.username;
+
+      if (!userId || !message) {
+        return res.status(400).json({ message: "User ID and message are required" });
+      }
+
+      // Get user email
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Save message to database
+      await storage.createAdminMessage({
+        fromAdminId: req.user.id,
+        toUserId: userId,
+        message: message
+      });
+
+      // Send email using the simple email service
+      const emailSent = await sendAdminMessage(user.email, message, adminName);
+
+      if (emailSent) {
+        res.json({ message: "Message sent successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error('Admin send message error:', error);
+      res.status(500).json({ message: "Failed to send message" });
+    }
+  });
+
+  app.post("/api/admin/make-admin", authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      // Get user to verify they exist
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.isAdmin) {
+        return res.status(400).json({ message: "User is already an admin" });
+      }
+
+      // Update user to admin status
+      await storage.updateUser(userId, { isAdmin: true });
+
+      res.json({ message: "User promoted to admin successfully" });
+    } catch (error) {
+      console.error('Make admin error:', error);
+      res.status(500).json({ message: "Failed to promote user to admin" });
     }
   });
 
