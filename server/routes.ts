@@ -82,10 +82,16 @@ app.post("/api/auth/change-password", authenticateToken, async (req: any, res) =
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    const hashedNewPassword = await hashPassword(newPassword);
-    await storage.updateUser(userId, { password: hashedNewPassword });
+const hashedNewPassword = await hashPassword(newPassword);
+const updateResult = await storage.updateUser(userId, { password: hashedNewPassword });
 
-    res.json({ message: 'Password changed successfully' });
+console.log(`🔐 PASSWORD UPDATE ATTEMPT:
+   User ID: ${userId}
+   Update Result: ${updateResult ? 'Success' : 'Failed'}
+   New Password Hash: ${hashedNewPassword.substring(0, 20)}...
+   Time: ${new Date().toISOString()}`);
+
+res.json({ message: 'Password changed successfully' });
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ message: 'Failed to change password' });
