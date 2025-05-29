@@ -494,5 +494,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const server = createServer(app);
+  app.post("/api/admin/make-admin", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isAdmin) {
+      return res.status(400).json({ message: "User is already an admin" });
+    }
+
+    await storage.updateUser(userId, { isAdmin: true });
+
+    res.json({ message: "User promoted to admin successfully" });
+  } catch (error) {
+    console.error('Make admin error:', error);
+    res.status(500).json({ message: "Failed to promote user to admin" });
+  }
+});
   return server;
 }
