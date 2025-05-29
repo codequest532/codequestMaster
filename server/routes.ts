@@ -91,32 +91,8 @@ app.post("/api/auth/change-password", authenticateToken, async (req: any, res) =
     res.status(500).json({ message: 'Failed to change password' });
   }
 });
+
   
-  // Get current authenticated user profile
-  app.get("/api/profile/current", authenticateToken, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      const progressStats = await storage.getUserProgressStats(userId);
-
-      const { password, ...userProfile } = user;
-      res.json({
-        ...userProfile,
-        solved: progressStats.solved,
-        total: progressStats.total,
-        streak: progressStats.streak
-      });
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      res.status(500).json({ message: 'Failed to fetch user profile' });
-    }
-  });
-
   // Update user profile
   app.patch("/api/profile/update", authenticateToken, async (req: any, res) => {
     try {
