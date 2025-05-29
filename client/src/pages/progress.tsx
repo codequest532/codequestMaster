@@ -4,19 +4,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/hooks/use-user";
+import { useLocation } from "wouter";
 import type { PuzzleWithProgress, Category } from "@shared/schema";
 
 export default function ProgressPage() {
   const { user } = useUser();
+  const [location] = useLocation();
+  
+  // Check if viewing another user's progress from admin panel
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const targetUserId = urlParams.get('userId');
+  const isAdminView = targetUserId && user?.isAdmin;
+  const displayUserId = isAdminView ? parseInt(targetUserId) : user?.id;
 
   const { data: puzzles = [] } = useQuery<PuzzleWithProgress[]>({
-    queryKey: ["/api/puzzles", user?.id],
-    enabled: !!user,
+    queryKey: ["/api/puzzles", displayUserId],
+    enabled: !!displayUserId,
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    staleTime: 0, // Always fetch fresh data
   });
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    staleTime: 60000, // Categories don't change often
   });
+
+  // Get target user data when viewing another user's progress
+  const { data: targetUserData } = useQuery({
+    queryKey: ["/api/admin/user", displayUserId],
+    enabled: !!isAdminView && !!displayUserId,
+    refetchInterval: 5000, // Real-time updates
+    staleTime: 0,
+  });
+
+  const displayUser = isAdminView ? targetUserData : user;
 
   if (!user) {
     return (
