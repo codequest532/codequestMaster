@@ -1,7 +1,7 @@
 import { eq, desc, count, and, sql } from "drizzle-orm";
 import { db } from "./db";
 import { 
-  users, categories, puzzles, userProgress, achievements, userAchievements, sessions
+  users, categories, puzzles, userProgress, achievements, userAchievements, sessions, adminMessages
 } from "@shared/schema";
 import type { 
   User, InsertUser, 
@@ -11,6 +11,7 @@ import type {
   Achievement, InsertAchievement,
   UserAchievement, InsertUserAchievement,
   Session, InsertSession,
+  AdminMessage, InsertAdminMessage,
   PuzzleWithProgress, UserWithStats, LeaderboardEntry
 } from "@shared/schema";
 
@@ -58,6 +59,7 @@ interface IStorage {
   getTotalUsersCount(): Promise<number>;
   getTotalPuzzlesCount(): Promise<number>;
   getTodaySolutionsCount(): Promise<number>;
+  getTodaySolutionsWithUsers(): Promise<any[]>;
   getActiveSessionsCount(): Promise<number>;
   
   // Additional admin methods
@@ -326,6 +328,33 @@ export class DatabaseStorage implements IStorage {
         )
       );
     return result[0]?.count || 0;
+  }
+
+  async getTodaySolutionsWithUsers(): Promise<any[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const result = await db
+      .select({
+        userId: userProgress.userId,
+        username: users.username,
+        puzzleId: userProgress.puzzleId,
+        completedAt: userProgress.completedAt,
+        title: puzzles.title,
+        difficulty: puzzles.difficulty
+      })
+      .from(userProgress)
+      .innerJoin(users, eq(userProgress.userId, users.id))
+      .innerJoin(puzzles, eq(userProgress.puzzleId, puzzles.id))
+      .where(
+        and(
+          eq(userProgress.status, 'completed'),
+          sql`${userProgress.completedAt} >= ${today.toISOString()}`
+        )
+      )
+      .orderBy(desc(userProgress.completedAt));
+    
+    return result;
   }
 
   async getActiveSessionsCount(): Promise<number> {
