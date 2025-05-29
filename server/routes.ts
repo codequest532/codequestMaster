@@ -59,46 +59,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Change password endpoint
-app.post("/api/auth/change-password", authenticateToken, async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const { currentPassword, newPassword } = req.body;
-    
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required' });
+  app.post("/api/auth/change-password", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Current password and new password are required' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: 'Current password is incorrect' });
+      }
+
+      const hashedNewPassword = await hashPassword(newPassword);
+      await storage.updateUser(userId, { password: hashedNewPassword });
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({ message: 'Failed to change password' });
     }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
-    }
-
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
-    if (!isCurrentPasswordValid) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
-    }
-
-const hashedNewPassword = await hashPassword(newPassword);
-const updateResult = await storage.updateUser(userId, { password: hashedNewPassword });
-
-console.log(`🔐 PASSWORD UPDATE ATTEMPT:
-   User ID: ${userId}
-   Update Result: ${updateResult ? 'Success' : 'Failed'}
-   New Password Hash: ${hashedNewPassword.substring(0, 20)}...
-   Time: ${new Date().toISOString()}`);
-
-res.json({ message: 'Password changed successfully' });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({ message: 'Failed to change password' });
-  }
-});
-
+  });
   
+  // Get current authenticated user profile
+  app.get("/api/profile/current", authenticateToken, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const progressStats = await storage.getUserProgressStats(userId);
+
+      const { password, ...userProfile } = user;
+      res.json({
+        ...userProfile,
+        solved: progressStats.solved,
+        total: progressStats.total,
+        streak: progressStats.streak
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      res.status(500).json({ message: 'Failed to fetch user profile' });
+    }
+  });
+
   // Update user profile
   app.patch("/api/profile/update", authenticateToken, async (req: any, res) => {
     try {
