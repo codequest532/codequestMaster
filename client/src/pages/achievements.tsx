@@ -11,11 +11,14 @@ export default function AchievementsPage() {
 
   const { data: allAchievements = [] } = useQuery<Achievement[]>({
     queryKey: ["/api/achievements"],
+    staleTime: 60000, // Achievements definitions don't change often
   });
 
   const { data: userAchievements = [] } = useQuery<any[]>({
     queryKey: ["/api/achievements/user", user?.id],
     enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time achievement updates
+    staleTime: 0, // Always fetch fresh user achievement data
   });
 
   if (!user) {
@@ -151,7 +154,11 @@ export default function AchievementsPage() {
                   </CardTitle>
                   
                   <div className="flex justify-center">
-                    <Badge className={getTypeColor(achievement.type)}>
+                    <Badge 
+                      variant="transparent" 
+                      size="lg"
+                      className={getTypeColor(achievement.type)}
+                    >
                       {achievement.type}
                     </Badge>
                   </div>

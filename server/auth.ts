@@ -103,10 +103,6 @@ export function setupAuth(app: Express) {
         email,
         mobile: mobile || null,
         password: hashedPassword,
-        level: 1,
-        currentXP: 0,
-        totalXP: 0,
-        streak: 0,
         isAdmin: false
       });
 

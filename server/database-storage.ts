@@ -331,8 +331,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTodaySolutionsWithUsers(): Promise<any[]> {
+<<<<<<< HEAD
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+=======
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+>>>>>>> 6c035d78b6db680072be4419148eaf0dbc82c56f
     
     const result = await db
       .select({
@@ -341,7 +346,13 @@ export class DatabaseStorage implements IStorage {
         puzzleId: userProgress.puzzleId,
         completedAt: userProgress.completedAt,
         title: puzzles.title,
+<<<<<<< HEAD
+        difficulty: puzzles.difficulty,
+        points: puzzles.points,
+        totalXP: users.totalXP
+=======
         difficulty: puzzles.difficulty
+>>>>>>> 6c035d78b6db680072be4419148eaf0dbc82c56f
       })
       .from(userProgress)
       .innerJoin(users, eq(userProgress.userId, users.id))
@@ -349,10 +360,18 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(userProgress.status, 'completed'),
+<<<<<<< HEAD
+          sql`${userProgress.completedAt} >= ${sevenDaysAgo.toISOString()}`
+        )
+      )
+      .orderBy(desc(userProgress.completedAt))
+      .limit(50);
+=======
           sql`${userProgress.completedAt} >= ${today.toISOString()}`
         )
       )
       .orderBy(desc(userProgress.completedAt));
+>>>>>>> 6c035d78b6db680072be4419148eaf0dbc82c56f
     
     return result;
   }

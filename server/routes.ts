@@ -96,25 +96,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/profile/current", authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
+<<<<<<< HEAD
+=======
       
       // Update lastActive timestamp to track active sessions
       await storage.updateUser(userId, { lastActive: new Date() });
       
       const user = await storage.getUser(userId);
+>>>>>>> 6c035d78b6db680072be4419148eaf0dbc82c56f
       
-      if (!user) {
+      // Update lastActive timestamp to track active sessions
+      await storage.updateUser(userId, { lastActive: new Date() });
+      
+      const userWithStats = await storage.getUserWithStats(userId);
+      
+      if (!userWithStats) {
         return res.status(404).json({ message: 'User not found' });
       }
 
-      const progressStats = await storage.getUserProgressStats(userId);
-
-      const { password, ...userProfile } = user;
-      res.json({
-        ...userProfile,
-        solved: progressStats.solved,
-        total: progressStats.total,
-        streak: progressStats.streak
-      });
+      const { password, ...userProfile } = userWithStats;
+      res.json(userProfile);
     } catch (error) {
       console.error('Error fetching user profile:', error);
       res.status(500).json({ message: 'Failed to fetch user profile' });
@@ -196,7 +197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to create user", error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Failed to create user", error: errorMessage });
     }
   });
 
@@ -293,7 +295,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/code/submit", async (req, res) => {
     try {
-      const { code, language, puzzleId, userId } = req.body;
+      const { code, language, puzzleId } = req.body;
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.body.userId;
       
       if (!code || !language || !puzzleId) {
         return res.status(400).json({ 
@@ -312,25 +315,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allPassed = true;
       const xpGained = 100;
       
-      // Update user XP if submission is successful
-      if (allPassed && userId) {
+      // Update user XP and progress if submission is successful
+      console.log("XP Update check - allPassed:", allPassed, "userId:", userId, "puzzleId:", puzzleId);
+      if (allPassed && userId && puzzleId) {
         try {
+          console.log("Fetching user data for userId:", userId);
           const currentUser = await storage.getUser(userId);
           if (currentUser) {
+            console.log("Current user XP:", currentUser.totalXP, "Current level:", currentUser.level);
             const newTotalXP = currentUser.totalXP + xpGained;
             const newCurrentXP = currentUser.currentXP + xpGained;
             const newLevel = Math.floor(newTotalXP / 1000) + 1;
             
+            console.log("Updating user with new XP:", newTotalXP, "new level:", newLevel);
             await storage.updateUser(userId, {
               currentXP: newCurrentXP,
               totalXP: newTotalXP,
               level: newLevel,
               lastActive: new Date()
             });
+            console.log("XP update completed successfully");
+
+            // Create or update user progress record
+            console.log("Checking user progress for puzzle:", puzzleId);
+            const existingProgress = await storage.getUserProgress(userId, puzzleId);
+            if (existingProgress) {
+              console.log("Updating existing progress record");
+              await storage.updateUserProgress(existingProgress.id, {
+                status: "completed",
+                completedAt: new Date(),
+                attempts: existingProgress.attempts + 1
+              });
+            } else {
+              console.log("Creating new progress record");
+              await storage.createUserProgress({
+                userId: userId,
+                puzzleId: puzzleId,
+                status: "completed",
+                completedAt: new Date(),
+                attempts: 1
+              });
+            }
+            console.log("Progress record updated successfully");
+          } else {
+            console.log("User not found for userId:", userId);
           }
         } catch (error) {
           console.error("Failed to update user progress:", error);
         }
+      } else {
+        console.log("XP update skipped - allPassed:", allPassed, "userId:", userId, "puzzleId:", puzzleId);
       }
       
       res.json({
@@ -360,8 +394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user/:userId/progress", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
-      const progress = await storage.getUserProgress(userId);
-      res.json(progress);
+      const stats = await storage.getUserProgressStats(userId);
+      res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user progress" });
     }

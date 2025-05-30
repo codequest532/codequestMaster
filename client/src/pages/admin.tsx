@@ -29,6 +29,8 @@ export default function AdminPage() {
   const [showMessageDialog, setShowMessageDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [messageText, setMessageText] = useState("");
+  const [showUserDetailModal, setShowUserDetailModal] = useState(false);
+  const [selectedUserForDetail, setSelectedUserForDetail] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -37,15 +39,21 @@ export default function AdminPage() {
     queryKey: ["/api/categories"],
   });
 
-  const { data: puzzles = [] } = useQuery({
+  const { data: puzzles = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/puzzles"],
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{
+    totalUsers: number;
+    totalPuzzles: number;
+    solutionsToday: number;
+    activeSessions: number;
+    todaySolutionsWithUsers: any[];
+  }>({
     queryKey: ["/api/admin/stats"],
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     staleTime: 0, // Always fetch fresh admin statistics
@@ -129,6 +137,35 @@ export default function AdminPage() {
     setLocation(`/progress?userId=${user.id}`);
   };
 
+  const handleViewUserDetail = async (solution: any) => {
+    try {
+      const token = localStorage.getItem('codequest_token');
+      if (!token) return;
+
+      // Fetch user puzzles with progress data
+      const puzzlesResponse = await fetch(`/api/puzzles?userId=${solution.userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (puzzlesResponse.ok) {
+        const puzzlesData = await puzzlesResponse.json();
+        setSelectedUserForDetail({
+          ...solution,
+          puzzles: puzzlesData
+        });
+        setShowUserDetailModal(true);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load user details",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleMakeAdmin = (user: any) => {
     makeAdminMutation.mutate(user.id);
   };
@@ -210,8 +247,12 @@ export default function AdminPage() {
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Solutions Today</p>
-                    <p className="text-2xl font-bold text-purple-600">{stats?.solutionsToday || 0}</p>
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Quest Master</p>
+                    <p className="text-lg font-bold text-purple-600">{users?.reduce((top: any, user: any) => {
+                      const userDailyXP = user.totalXP || 0;
+                      const topDailyXP = top?.totalXP || 0;
+                      return userDailyXP > topDailyXP ? user : top;
+                    }, null)?.username || "-"}</p>
                   </div>
                   <Trophy className="h-6 w-6 text-purple-600" />
                 </div>
@@ -228,10 +269,58 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Recent Activity - Real User Data */}
+            {/* Global User Progress - Real User Data */}
             <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
-              <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+              <h3 className="text-lg font-semibold mb-4">Global User Progress</h3>
               <div className="space-y-3">
+                {users && users.length > 0 ? (
+                  users.map((user: any) => (
+                    <div key={user.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">{user.username?.charAt(0) || 'U'}</span>
+                        </div>
+                        <div>
+                          <button 
+                            onClick={() => handleViewProgress(user)}
+                            className="text-sm font-medium hover:text-blue-600 transition-colors cursor-pointer text-left"
+                          >
+                            {user.username}
+                          </button>
+                          <p className="text-xs text-blue-600 font-medium">{user.totalXP || 0} XP Total</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            Level {user.level || 1} • {Math.floor((user.totalXP || 0) / 100)} puzzles solved
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {(() => {
+                          const totalSolved = Math.floor((user.totalXP || 0) / 100);
+                          let icon = "🌱";
+                          
+                          if (totalSolved >= 100) {
+                            icon = "👑";
+                          } else if (totalSolved >= 50) {
+                            icon = "🏆";
+                          } else if (totalSolved >= 25) {
+                            icon = "🚀";
+                          } else if (totalSolved >= 10) {
+                            icon = "💻";
+                          } else if (totalSolved >= 5) {
+                            icon = "📈";
+                          } else if (totalSolved >= 1) {
+                            icon = "⭐";
+                          }
+                          
+                          return (
+                            <span className="inline-flex items-center justify-center w-8 h-8 text-lg bg-transparent">
+                              {icon}
+                            </span>
+                          );
+                        })()}
+                        <Badge variant="outline" className="text-xs">
+                          +{user.totalXP || 0} XP
+=======
                 {stats?.todaySolutionsWithUsers && stats.todaySolutionsWithUsers.length > 0 ? (
                   stats.todaySolutionsWithUsers.map((solution: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -256,8 +345,8 @@ export default function AdminPage() {
                   ))
                 ) : (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    <p className="text-sm">No recent activity</p>
-                    <p className="text-xs mt-1">User actions will appear here</p>
+                    <p className="text-sm">No users found</p>
+                    <p className="text-xs mt-1">User progress will appear here</p>
                   </div>
                 )}
               </div>
@@ -396,7 +485,7 @@ export default function AdminPage() {
           <TabsContent value="create">
             <PuzzleCreateForm 
               categories={categories}
-              onSubmit={(data) => createPuzzleMutation.mutate(data)}
+              onSubmit={(data: any) => createPuzzleMutation.mutate(data)}
               isLoading={createPuzzleMutation.isPending}
             />
           </TabsContent>
@@ -431,6 +520,101 @@ export default function AdminPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Detail Modal */}
+      <Dialog open={showUserDetailModal} onOpenChange={setShowUserDetailModal}>
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-medium">{selectedUserForDetail?.username?.charAt(0) || 'U'}</span>
+              </div>
+              <div>
+                <span className="text-xl">{selectedUserForDetail?.username}</span>
+                <p className="text-sm text-muted-foreground">{selectedUserForDetail?.totalXP || 0} XP Total</p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedUserForDetail && (
+            <div className="space-y-6">
+              {/* Category Progress */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Progress by Category</h3>
+                <div className="grid gap-4">
+                  {categories.map((category: any) => {
+                    const categoryPuzzles = selectedUserForDetail.puzzles?.filter((p: any) => p.categoryId === category.id) || [];
+                    const solvedPuzzles = categoryPuzzles.filter((p: any) => p.progress?.status === 'completed');
+                    const totalXP = solvedPuzzles.reduce((sum: number, p: any) => sum + (p.points || 100), 0);
+                    
+                    return (
+                      <div key={category.id} className="p-4 border rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-medium">{category.name}</h4>
+                          <span className="text-sm text-muted-foreground">{solvedPuzzles.length}/{categoryPuzzles.length} solved</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span>{totalXP} XP earned</span>
+                          <div className="flex space-x-1">
+                            {['easy', 'medium', 'hard'].map(difficulty => {
+                              const count = solvedPuzzles.filter((p: any) => p.difficulty === difficulty).length;
+                              return count > 0 && (
+                                <Badge 
+                                  key={difficulty} 
+                                  variant={difficulty === 'easy' ? 'default' : difficulty === 'medium' ? 'secondary' : 'destructive'} 
+                                  size="default"
+                                  className="text-xs"
+                                >
+                                  {count} {difficulty}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recent Solved Puzzles */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Recently Solved Puzzles</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {selectedUserForDetail.puzzles
+                    ?.filter((p: any) => p.progress?.status === 'completed')
+                    .sort((a: any, b: any) => new Date(b.progress.completedAt).getTime() - new Date(a.progress.completedAt).getTime())
+                    .slice(0, 10)
+                    .map((puzzle: any) => (
+                    <div key={puzzle.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{puzzle.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Completed {new Date(puzzle.progress.completedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={puzzle.difficulty === 'easy' ? 'default' : puzzle.difficulty === 'medium' ? 'secondary' : 'destructive'} 
+                          size="default"
+                          className="text-xs"
+                        >
+                          {puzzle.difficulty}
+                        </Badge>
+                        <Badge variant="outline" size="default" className="text-xs">
+                          +{puzzle.points || 100} XP
+                        </Badge>
+                      </div>
+                    </div>
+                  )) || (
+                    <p className="text-center text-muted-foreground py-4">No puzzles solved yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

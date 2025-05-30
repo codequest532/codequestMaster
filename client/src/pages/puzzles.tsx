@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Bell, User, LogOut, Search, Trophy, TrendingUp, Medal, Eye, Mail, Phone, Lock, Calendar, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,11 +165,15 @@ export default function PuzzlesPage() {
 
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
+    staleTime: 60000, // Categories don't change often
   });
 
   const { data: puzzles = [] } = useQuery<PuzzleWithProgress[]>({
     queryKey: ["/api/puzzles", user?.id],
+    queryFn: () => apiRequest("GET", `/api/puzzles?userId=${user!.id}`).then(res => res.json()),
     enabled: !!user,
+    refetchInterval: 3000, // Refresh every 3 seconds for real-time progress updates
+    staleTime: 0, // Always fetch fresh puzzle progress data
   });
 
   const filteredPuzzles = selectedCategory 

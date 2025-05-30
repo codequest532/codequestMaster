@@ -71,7 +71,16 @@ export default function LeaderboardPage() {
                 </Avatar>
                 <CardTitle className="text-lg">{entry.user.username}</CardTitle>
                 <Badge className={getRankBadgeColor(entry.rank)}>
-                  Level {entry.user.level}
+                  {(() => {
+                    const totalSolved = Math.floor(entry.totalXP / 100);
+                    if (totalSolved >= 100) return "👑 Code Warrior";
+                    if (totalSolved >= 50) return "🏆 Algorithm Master";
+                    if (totalSolved >= 25) return "🚀 Coding Enthusiast";
+                    if (totalSolved >= 10) return "💻 Problem Solver";
+                    if (totalSolved >= 5) return "📈 Getting Started";
+                    if (totalSolved >= 1) return "⭐ First Steps";
+                    return "🌱 Beginner";
+                  })()}
                 </Badge>
               </CardHeader>
               <CardContent className="text-center">
@@ -113,7 +122,18 @@ export default function LeaderboardPage() {
                     </Avatar>
                     <div>
                       <h3 className="font-medium text-foreground">{entry.user.username}</h3>
-                      <p className="text-sm text-muted-foreground">Level {entry.user.level}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {(() => {
+                          const totalSolved = Math.floor(entry.totalXP / 100);
+                          if (totalSolved >= 100) return "👑 Code Warrior";
+                          if (totalSolved >= 50) return "🏆 Algorithm Master";
+                          if (totalSolved >= 25) return "🚀 Coding Enthusiast";
+                          if (totalSolved >= 10) return "💻 Problem Solver";
+                          if (totalSolved >= 5) return "📈 Getting Started";
+                          if (totalSolved >= 1) return "⭐ First Steps";
+                          return "🌱 Beginner";
+                        })()}
+                      </p>
                     </div>
                   </div>
                   

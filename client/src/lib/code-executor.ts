@@ -78,13 +78,14 @@ function executeJavaScript(code: string, testCases: any[]): ExecutionResult {
           hidden: testCase.hidden || false,
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         results.push({
           input: testCase.input,
           expected: testCase.expected,
-          output: `Error: ${error.message}`,
+          output: `Error: ${errorMessage}`,
           passed: false,
           hidden: testCase.hidden || false,
-          error: error.message,
+          error: errorMessage,
         });
       }
     }

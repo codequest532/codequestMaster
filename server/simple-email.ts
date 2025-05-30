@@ -15,7 +15,7 @@ export async function sendPasswordResetEmail(
       body: JSON.stringify({
         sender: {
           name: 'CodeQuest Security',
-          email: process.env.BREVO_SENDER_EMAIL || 'admin@codequest.com'
+          email: 'ganesan.sixphrase@gmail.com'
         },
         to: [{
           email: userEmail,
@@ -74,7 +74,7 @@ export async function sendAdminMessage(
       body: JSON.stringify({
         sender: {
           name: `CodeQuest Admin - ${adminName}`,
-          email: process.env.BREVO_SENDER_EMAIL || 'admin@codequest.com'
+          email: 'ganesan.sixphrase@gmail.com'
         },
         to: [{
           email: userEmail,

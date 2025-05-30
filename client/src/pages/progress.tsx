@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 import type { PuzzleWithProgress, Category } from "@shared/schema";
 
 export default function ProgressPage() {
@@ -19,6 +20,7 @@ export default function ProgressPage() {
 
   const { data: puzzles = [] } = useQuery<PuzzleWithProgress[]>({
     queryKey: ["/api/puzzles", displayUserId],
+    queryFn: () => apiRequest("GET", `/api/puzzles?userId=${displayUserId}`).then(res => res.json()),
     enabled: !!displayUserId,
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     staleTime: 0, // Always fetch fresh data

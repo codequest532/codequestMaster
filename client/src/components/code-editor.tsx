@@ -139,7 +139,11 @@ export default function CodeEditor({
       console.log("Submit success:", data);
       setIsRunning(false);
       queryClient.invalidateQueries({ queryKey: ["/api/puzzles", user.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      
+      // Trigger a custom event to refresh user data in useUser hook
+      window.dispatchEvent(new CustomEvent('tokenChanged'));
       
       // Pass submit results to parent component for display in Results tab
       if (onSubmitResult) {
@@ -427,6 +431,22 @@ export default function CodeEditor({
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
+          onPaste={(e) => {
+            e.preventDefault();
+            toast({
+              title: "Paste Disabled",
+              description: "Copy and paste is disabled in the code editor. Please type your solution.",
+              variant: "destructive",
+            });
+          }}
+          onCopy={(e) => {
+            e.preventDefault();
+            toast({
+              title: "Copy Disabled",
+              description: "Copy and paste is disabled in the code editor.",
+              variant: "destructive",
+            });
+          }}
           className="absolute inset-0 p-4 font-mono text-sm leading-relaxed resize-none bg-transparent text-foreground focus:outline-none"
           placeholder="// Write your solution here"
           spellCheck={false}
