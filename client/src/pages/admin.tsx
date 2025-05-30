@@ -320,7 +320,23 @@ export default function AdminPage() {
                         })()}
                         <Badge variant="outline" className="text-xs">
                           +{user.totalXP || 0} XP
-=======
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <p className="text-sm">No users found</p>
+                    <p className="text-xs mt-1">User progress will appear here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Activity Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border p-4">
+              <h3 className="text-lg font-semibold mb-4">Today's Solutions</h3>
+              <div className="space-y-3">
                 {stats?.todaySolutionsWithUsers && stats.todaySolutionsWithUsers.length > 0 ? (
                   stats.todaySolutionsWithUsers.map((solution: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">

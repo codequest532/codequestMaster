@@ -96,14 +96,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/profile/current", authenticateToken, async (req: any, res) => {
     try {
       const userId = req.user.id;
-<<<<<<< HEAD
-=======
-      
-      // Update lastActive timestamp to track active sessions
-      await storage.updateUser(userId, { lastActive: new Date() });
-      
-      const user = await storage.getUser(userId);
->>>>>>> 6c035d78b6db680072be4419148eaf0dbc82c56f
       
       // Update lastActive timestamp to track active sessions
       await storage.updateUser(userId, { lastActive: new Date() });
